@@ -1,0 +1,1565 @@
+<!DOCTYPE html>
+<html lang="pt-BR" data-tema="claro" data-arquivo="mapas-mentais">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Gerador de Mapas Mentais</title>
+<style>
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0}
+  :root{
+    --bg:#f2f5f9; --surface:#ffffff; --surface-2:#eef2f7;
+    --text:#0f172a; --muted:#64748b; --border:#e2e8f0;
+    --accent:#2A6F97; --accent-2:#61A5C2;
+    --grad:linear-gradient(135deg,#012A4A,#2A6F97 55%,#61A5C2);
+    --radius:16px;
+    --shadow:0 1px 2px rgba(15,23,42,.06), 0 10px 28px rgba(15,23,42,.07);
+    --fonte:system-ui,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+  }
+  html[data-tema="escuro"]{
+    --bg:#070b11; --surface:#0f1620; --surface-2:#161f2b;
+    --text:#e6edf6; --muted:#8fa1b8; --border:#22303f;
+    --shadow:0 1px 2px rgba(0,0,0,.5), 0 12px 34px rgba(0,0,0,.5);
+  }
+  body{
+    background:var(--bg); color:var(--text); line-height:1.45;
+    font-family:var(--fonte); -webkit-font-smoothing:antialiased;
+    padding-bottom:96px;
+  }
+  .wrap{max-width:1280px;margin:0 auto;padding:10px}
+
+  /* ---------- HERO ---------- */
+  .hero{position:relative;overflow:hidden;border-radius:var(--radius);
+    background-image:var(--grad);color:#fff;padding:20px 18px;box-shadow:var(--shadow)}
+  .hero::after{content:'';position:absolute;inset:0;pointer-events:none;
+    background:linear-gradient(165deg,rgba(0,0,0,.06),rgba(0,0,0,.45))}
+  .hero>*{position:relative;z-index:1}
+  .selo{display:inline-flex;align-items:center;gap:6px;font-size:10.5px;font-weight:800;
+    letter-spacing:.09em;text-transform:uppercase;background:rgba(255,255,255,.18);
+    border:1px solid rgba(255,255,255,.3);padding:4px 11px;border-radius:999px;margin-bottom:11px}
+  .hero h1{margin:0 0 6px;font-size:clamp(19px,4.4vw,29px);line-height:1.16;
+    letter-spacing:-.022em;font-weight:800}
+  .hero p{margin:0;font-size:clamp(12px,2.7vw,14px);opacity:.94;font-weight:500}
+  .hero-meta{display:flex;flex-wrap:wrap;gap:6px;margin-top:13px}
+  .hero-meta span{display:inline-flex;align-items:center;gap:5px;font-size:11px;font-weight:700;
+    background:rgba(255,255,255,.14);border:1px solid rgba(255,255,255,.22);
+    padding:4px 9px;border-radius:8px}
+
+  /* ---------- TOOLBAR ---------- */
+  .toolbar{position:sticky;top:0;z-index:40;margin-top:10px;background:var(--surface);
+    border:1px solid var(--border);border-radius:var(--radius);box-shadow:var(--shadow);
+    padding:9px;display:flex;flex-wrap:wrap;gap:7px;align-items:center}
+  .campo{display:flex;align-items:center;gap:6px;background:var(--surface-2);
+    border:1px solid var(--border);border-radius:10px;padding:6px 9px;flex:1 1 168px;min-width:0}
+  .campo label{font-size:10.5px;font-weight:800;color:var(--muted);white-space:nowrap;
+    text-transform:uppercase;letter-spacing:.05em}
+  .campo select{flex:1;min-width:0;background:transparent;border:0;color:var(--text);
+    font-size:12.5px;font-weight:700;outline:none;cursor:pointer;font-family:inherit}
+  .campo select option{background:var(--surface);color:var(--text)}
+
+  /* ---------- MAPA ---------- */
+  .palco{margin-top:12px;background:var(--surface);border:1px solid var(--border);
+    border-radius:var(--radius);box-shadow:var(--shadow);overflow:hidden;position:relative}
+  .palco-topo{display:flex;justify-content:space-between;align-items:center;gap:10px;
+    padding:11px 13px;border-bottom:1px solid var(--border);flex-wrap:wrap}
+  .palco-topo h2{margin:0;font-size:14.5px;font-weight:800;letter-spacing:-.01em}
+  .palco-topo .sub{font-size:11.5px;color:var(--muted);margin-top:2px}
+  .zoom{display:flex;gap:5px;align-items:center}
+  .zoom button{width:32px;height:32px;display:grid;place-items:center;border-radius:9px;
+    border:1px solid var(--border);background:var(--surface-2);color:var(--text);
+    cursor:pointer;font-size:14px;font-weight:800;padding:0;transition:.15s}
+  .zoom button:hover{border-color:var(--accent);transform:translateY(-1px)}
+  #mapa{display:block;width:100%;height:clamp(420px,70vh,740px);touch-action:none;
+    cursor:grab;background:var(--surface)}
+  #mapa.arrastando{cursor:grabbing}
+  .dica{position:absolute;left:12px;bottom:10px;font-size:10.5px;color:var(--muted);
+    background:var(--surface);border:1px solid var(--border);border-radius:8px;
+    padding:4px 9px;font-weight:600;pointer-events:none;opacity:.9}
+
+  /* ---------- BARRA DO NÓ ---------- */
+  .barra-no{position:fixed;left:50%;bottom:14px;transform:translateX(-50%);
+    z-index:60;width:calc(100% - 20px);max-width:660px;background:var(--surface);
+    border:1px solid var(--border);border-radius:14px;box-shadow:0 14px 44px rgba(0,0,0,.22);
+    padding:10px 11px;display:flex;gap:9px;align-items:center;flex-wrap:wrap;
+    animation:sobe .22s ease}
+  @keyframes sobe{from{opacity:0;transform:translate(-50%,14px)}to{opacity:1;transform:translate(-50%,0)}}
+  .barra-info{flex:1 1 150px;min-width:0}
+  .barra-label{display:block;font-size:13px;font-weight:800;white-space:nowrap;
+    overflow:hidden;text-overflow:ellipsis}
+  .barra-caminho{display:block;font-size:10.5px;color:var(--muted);white-space:nowrap;
+    overflow:hidden;text-overflow:ellipsis;font-weight:600}
+  .barra-acoes{display:flex;gap:5px;flex-wrap:wrap}
+  .barra-acoes button{display:inline-flex;align-items:center;gap:4px;border:1px solid var(--border);
+    background:var(--surface-2);color:var(--text);font-weight:700;font-size:11.5px;
+    padding:7px 10px;border-radius:9px;cursor:pointer;transition:.15s;font-family:inherit;
+    white-space:nowrap}
+  .barra-acoes button:hover{border-color:var(--accent);transform:translateY(-1px)}
+  .barra-acoes button.perigo:hover{border-color:#e63946;color:#e63946}
+
+  /* ---------- BOTÕES ---------- */
+  .btn{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--border);
+    background:var(--surface-2);color:var(--text);font-weight:700;font-size:12.5px;
+    padding:8px 12px;border-radius:10px;cursor:pointer;transition:.16s;font-family:inherit;
+    white-space:nowrap}
+  .btn:hover{border-color:var(--accent);transform:translateY(-1px)}
+  .btn.primario{background-image:var(--grad);color:#fff;border-color:transparent}
+  .btn:disabled{opacity:.6;cursor:wait;transform:none}
+
+  /* ---------- INFO CARDS ---------- */
+  .info-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:9px;margin-top:12px}
+  @media(min-width:640px){.info-grid{grid-template-columns:repeat(4,1fr)}}
+  .info{border-radius:14px;padding:11px 12px;border:1px solid var(--border);
+    background:var(--surface);box-shadow:var(--shadow)}
+  .info .rot{font-size:10px;font-weight:800;letter-spacing:.07em;text-transform:uppercase;
+    color:var(--muted);display:flex;gap:5px;align-items:center}
+  .info .val{font-size:19px;font-weight:800;letter-spacing:-.02em;margin-top:3px;
+    font-variant-numeric:tabular-nums}
+  .info .det{font-size:10.5px;color:var(--muted);margin-top:1px;font-weight:600;
+    white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+
+  /* ---------- FOOTER ---------- */
+  footer{margin-top:12px;padding:14px;border-radius:var(--radius);background:var(--surface);
+    border:1px solid var(--border);font-size:11.5px;color:var(--muted);
+    display:flex;flex-wrap:wrap;gap:10px;justify-content:space-between;align-items:center}
+  footer strong{color:var(--text)}
+  .rodape-acoes{display:flex;flex-wrap:wrap;gap:7px}
+
+  /* ---------- MODAL ---------- */
+  .modal{position:fixed;inset:0;background:rgba(2,6,15,.64);display:grid;place-items:center;
+    z-index:100;padding:16px;backdrop-filter:blur(3px)}
+  .modal[hidden]{display:none}
+  .modal-box{background:var(--surface);border:1px solid var(--border);border-radius:16px;
+    padding:18px;width:100%;max-width:420px;box-shadow:0 22px 64px rgba(0,0,0,.42)}
+  .modal-box h3{margin:0 0 4px;font-size:16px;font-weight:800}
+  .modal-box .ajuda{font-size:11.5px;color:var(--muted);margin-bottom:14px;font-weight:600}
+  .modal-box label{display:block;font-size:10.5px;font-weight:800;color:var(--muted);
+    margin-bottom:12px;text-transform:uppercase;letter-spacing:.06em}
+  .modal-box textarea,.modal-box input{width:100%;margin-top:5px;padding:10px;
+    border-radius:10px;border:1px solid var(--border);background:var(--surface-2);
+    color:var(--text);font-size:14px;font-weight:600;outline:none;font-family:inherit;
+    resize:vertical}
+  .modal-box textarea:focus,.modal-box input:focus{border-color:var(--accent)}
+  .modal-acoes{display:flex;gap:8px;justify-content:flex-end;margin-top:6px}
+
+  .vazio{padding:56px 16px;text-align:center;color:var(--muted);font-size:13.5px;font-weight:600}
+</style>
+</head>
+<body>
+<div class="wrap" id="app">
+
+  <header class="hero">
+    <span class="selo">🧠 Gerador de Mapas Mentais</span>
+    <h1 id="titulo">—</h1>
+    <p id="subtitulo"></p>
+    <div class="hero-meta">
+      <span id="selo-tema">🎯 —</span>
+      <span id="selo-paleta">🎨 —</span>
+      <span id="selo-data">📅 —</span>
+    </div>
+  </header>
+
+  <nav class="toolbar">
+    <div class="campo" style="flex:1 1 240px">
+      <label for="sel-tema-mapa">🎯 Tema</label>
+      <select id="sel-tema-mapa"></select>
+    </div>
+    <div class="campo">
+      <label for="sel-layout">🧭 Layout</label>
+      <select id="sel-layout">
+        <option value="mirror">🪞 Espelhado</option>
+        <option value="right">➡️ Árvore à direita</option>
+        <option value="down">⬇️ Árvore vertical</option>
+      </select>
+    </div>
+    <div class="campo">
+      <label for="sel-paleta">🎨 Paleta</label>
+      <select id="sel-paleta">
+        <option value="auto">Automática</option>
+        <option value="editorial-brasil">Editorial Brasil</option>
+        <option value="clean-newsroom">Clean Newsroom</option>
+        <option value="premium-tech">Premium Tech</option>
+        <option value="pastel-soft">Pastel Soft</option>
+        <option value="deep-ocean">Deep Ocean</option>
+        <option value="forest-green">Forest Green</option>
+        <option value="financial-pro">Financial Pro</option>
+        <option value="vibrant-pop">Vibrant Pop</option>
+      </select>
+    </div>
+    <div class="campo">
+      <label for="sel-tema">🌗 Tema</label>
+      <select id="sel-tema">
+        <option value="auto">Automático</option>
+        <option value="claro">☀️ Claro</option>
+        <option value="escuro">🌙 Escuro</option>
+      </select>
+    </div>
+  </nav>
+
+  <section class="palco">
+    <div class="palco-topo">
+      <div>
+        <h2 id="palco-titulo">Mapa mental</h2>
+        <div class="sub" id="palco-sub">—</div>
+      </div>
+      <div class="zoom">
+        <button id="btn-menos" title="Diminuir zoom" aria-label="Diminuir zoom">−</button>
+        <button id="btn-fit" title="Centralizar" aria-label="Centralizar">⛶</button>
+        <button id="btn-mais" title="Aumentar zoom" aria-label="Aumentar zoom">+</button>
+        <button id="btn-expandir" title="Expandir tudo" aria-label="Expandir tudo">🔽</button>
+        <button id="btn-recolher" title="Recolher tudo" aria-label="Recolher tudo">🔼</button>
+      </div>
+    </div>
+    <svg id="mapa" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="xMidYMid meet"></svg>
+    <div class="dica" id="dica">🖱️ Arraste para mover · Role para dar zoom · Clique num nó</div>
+  </section>
+
+  <div class="info-grid" id="infos"></div>
+
+  <footer>
+    <div>
+      <div id="fonte">—</div>
+      <div id="rodape-data">—</div>
+    </div>
+    <div class="rodape-acoes">
+      <button class="btn" id="btn-restaurar">♻️ Restaurar tema</button>
+      <button class="btn" id="btn-png">🖼️ Baixar PNG</button>
+      <button class="btn primario" id="btn-html">💾 Baixar HTML</button>
+    </div>
+  </footer>
+</div>
+
+<!-- Barra de ações do nó selecionado -->
+<div class="barra-no" id="barraNo" hidden>
+  <div class="barra-info">
+    <span class="barra-label" id="barraLabel">—</span>
+    <span class="barra-caminho" id="barraCaminho"></span>
+  </div>
+  <div class="barra-acoes">
+    <button data-acao="filho">➕ Filho</button>
+    <button data-acao="editar">✏️ Renomear</button>
+    <button data-acao="recolher">📁 Recolher</button>
+    <button data-acao="excluir" class="perigo">🗑️ Excluir</button>
+  </div>
+</div>
+
+<!-- Modal -->
+<div class="modal" id="modal" hidden>
+  <div class="modal-box">
+    <h3 id="modalTitulo">➕ Adicionar nó</h3>
+    <div class="ajuda" id="modalAjuda"></div>
+    <label>Texto do nó
+      <textarea id="campoTexto" rows="2" placeholder="Ex.: Estratégia de conteúdo" autocomplete="off"></textarea>
+    </label>
+    <div class="modal-acoes">
+      <button class="btn" id="btn-cancelar">Cancelar</button>
+      <button class="btn primario" id="btn-salvar">Salvar</button>
+    </div>
+  </div>
+</div>
+
+<script type="application/json" id="estado-inicial">
+{
+  "temaId": "educacao",
+  "ui": { "tema": "auto", "paleta": "auto", "layout": "mirror" }
+}
+</script>
+
+<script>
+(function(){
+'use strict';
+
+/* ============================================================
+   0. CONSTANTES
+   ============================================================ */
+const NS = 'http://www.w3.org/2000/svg';
+const FONT_CANVAS = 'system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif';
+const FONT_SVG = "system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif";
+const LS_BASE = 'mapas_mentais_v1';
+const ARQUIVO = document.documentElement.dataset.arquivo || 'padrao';
+const LS_KEY = LS_BASE + '::' + ARQUIVO;
+const DATA_GERACAO = new Date();
+
+const CFG = {
+  gapX: 52,        // folga horizontal entre níveis
+  gapY: 13,        // folga vertical entre irmãos
+  gapXv: 16,       // folga horizontal entre irmãos (layout vertical)
+  gapYv: 48,       // folga vertical entre níveis (layout vertical)
+  padEsq: 70,
+  padDir: 70,
+  padTopo: 108,    // espaço para título
+  padBase: 62      // espaço para rodapé
+};
+
+const PALETAS = {
+  'editorial-brasil': { nome:'Editorial Brasil', cores:['#0B3D91','#E63946','#2A9D8F','#F4A261','#264653','#E9C46A'] },
+  'clean-newsroom':   { nome:'Clean Newsroom',   cores:['#1E3A8A','#2563EB','#0EA5E9','#64748B','#DC2626','#94A3B8'] },
+  'premium-tech':     { nome:'Premium Tech',     cores:['#6D28D9','#06B6D4','#8B5CF6','#22D3EE','#4338CA','#A78BFA'] },
+  'pastel-soft':      { nome:'Pastel Soft',      cores:['#E8798F','#6FB6D9','#5FBF95','#E8AE5C','#9B7FE0','#4FBDB4'] },
+  'deep-ocean':       { nome:'Deep Ocean',       cores:['#2A6F97','#61A5C2','#89C2D9','#013A63','#A9D6E5','#012A4A'] },
+  'forest-green':     { nome:'Forest Green',     cores:['#2D6A4F','#40916C','#52B788','#74C69D','#1B4332','#B7E4C7'] },
+  'financial-pro':    { nome:'Financial Pro',    cores:['#415A77','#778DA9','#C9A227','#2A9D8F','#1B263B','#94A3B8'] },
+  'vibrant-pop':      { nome:'Vibrant Pop',      cores:['#FF006E','#3A86FF','#FFBE0B','#8338EC','#06D6A0','#FB5607'] }
+};
+
+/* ============================================================
+   1. BIBLIOTECA DE TEMAS DE MAPA MENTAL
+   ============================================================ */
+const TEMAS = [
+  { id:'educacao', nome:'🎓 Educação & Estudo', central:'Plano de Estudos', paleta:'clean-newsroom',
+    ramos:[
+      { label:'Objetivos', filhos:['Passar no vestibular','Média acima de 8,0','2h de estudo por dia','Dominar a redação'] },
+      { label:'Disciplinas', filhos:['Matemática','Português','Redação','História','Biologia','Física'] },
+      { label:'Métodos', filhos:['Pomodoro 25/5','Revisão espaçada','Flashcards','Mapas mentais','Resolução de questões'] },
+      { label:'Recursos', filhos:['Videoaulas','Livros didáticos','Banco de questões','Grupos de estudo'] },
+      { label:'Rotina', filhos:['Manhã: teoria','Tarde: prática','Noite: revisão','Sábado: simulado'] },
+      { label:'Avaliação', filhos:['Simulados semanais','Análise de erros','Ajuste do plano'] }
+    ]},
+
+  { id:'tech', nome:'💻 Tecnologia & Programação', central:'Stack de Desenvolvimento', paleta:'premium-tech',
+    ramos:[
+      { label:'Front-end', filhos:['HTML & CSS','JavaScript','React','TypeScript','Acessibilidade'] },
+      { label:'Back-end', filhos:['Node.js','Python','APIs REST','Autenticação','Banco de dados'] },
+      { label:'DevOps', filhos:['Git & GitHub','Docker','CI/CD','Cloud','Monitoramento'] },
+      { label:'Qualidade', filhos:['Testes unitários','Testes E2E','Code review','Lint & padrões'] },
+      { label:'Soft skills', filhos:['Comunicação','Documentação','Trabalho em equipe','Gestão de tempo'] },
+      { label:'Carreira', filhos:['Portfólio','Open source','Certificações','Networking'] }
+    ]},
+
+  { id:'marketing', nome:'📈 Marketing Digital', central:'Estratégia de Marketing', paleta:'vibrant-pop',
+    ramos:[
+      { label:'Público', filhos:['Persona','Dores','Desejos','Jornada de compra'] },
+      { label:'Canais', filhos:['Instagram','TikTok','Google Ads','E-mail marketing','Blog / SEO'] },
+      { label:'Conteúdo', filhos:['Reels','Carrosséis','Artigos','Newsletter','Lives'] },
+      { label:'Funil', filhos:['Topo: awareness','Meio: consideração','Fundo: conversão','Pós-venda'] },
+      { label:'Métricas', filhos:['CTR','CPC','CAC','LTV','ROAS','Taxa de conversão'] },
+      { label:'Orçamento', filhos:['Mídia paga','Produção','Ferramentas','Influenciadores'] }
+    ]},
+
+  { id:'negocios', nome:'🚀 Empreendedorismo', central:'Modelo de Negócio', paleta:'financial-pro',
+    ramos:[
+      { label:'Proposta de valor', filhos:['Problema','Solução','Diferencial competitivo'] },
+      { label:'Clientes', filhos:['Segmentos','Persona','Canais de aquisição'] },
+      { label:'Receita', filhos:['Modelo de cobrança','Precificação','Recorrência','Upsell'] },
+      { label:'Custos', filhos:['Fixos','Variáveis','Marketing','Equipe'] },
+      { label:'Operação', filhos:['Processos','Ferramentas','Parceiros','Fornecedores'] },
+      { label:'Métricas', filhos:['MRR','Churn','CAC','LTV','Runway'] }
+    ]},
+
+  { id:'autoconhecimento', nome:'🧠 Autoconhecimento', central:'Mapa Pessoal', paleta:'pastel-soft',
+    ramos:[
+      { label:'Valores', filhos:['Honestidade','Liberdade','Família','Aprendizado'] },
+      { label:'Forças', filhos:['Comunicação','Empatia','Organização','Criatividade'] },
+      { label:'Pontos de melhoria', filhos:['Procrastinação','Ansiedade','Delegação'] },
+      { label:'Propósito', filhos:['Impacto','Legado','Paixões','Talentos'] },
+      { label:'Hábitos', filhos:['Leitura','Meditação','Exercício','Sono regular'] },
+      { label:'Relações', filhos:['Família','Amigos','Trabalho','Comunidade'] }
+    ]},
+
+  { id:'sustentabilidade', nome:'🌱 Sustentabilidade', central:'Plano Sustentável', paleta:'forest-green',
+    ramos:[
+      { label:'Ambiental', filhos:['Reduzir CO₂','Reciclagem','Energia limpa','Uso da água'] },
+      { label:'Social', filhos:['Comunidade','Diversidade','Educação','Saúde'] },
+      { label:'Econômico', filhos:['Eficiência','Inovação','Custo-benefício'] },
+      { label:'Metas', filhos:['Neutralidade carbônica','Zero resíduos','100% renovável'] },
+      { label:'Indicadores', filhos:['Pegada de carbono','Consumo de água','Resíduos gerados'] },
+      { label:'Ações', filhos:['Auditoria','Parcerias','Certificações','Comunicação'] }
+    ]},
+
+  { id:'financas', nome:'💰 Finanças Pessoais', central:'Controle Financeiro', paleta:'financial-pro',
+    ramos:[
+      { label:'Receitas', filhos:['Salário','Freelance','Investimentos','Aluguéis'] },
+      { label:'Despesas fixas', filhos:['Moradia','Contas básicas','Assinaturas','Educação'] },
+      { label:'Despesas variáveis', filhos:['Alimentação','Transporte','Lazer','Saúde'] },
+      { label:'Reserva', filhos:['Emergência 6 meses','Aposentadoria','Metas de curto prazo'] },
+      { label:'Investimentos', filhos:['Renda fixa','Ações','Fundos','Imóveis'] },
+      { label:'Dívidas', filhos:['Cartão de crédito','Empréstimos','Financiamentos','Renegociação'] }
+    ]},
+
+  { id:'saude', nome:'🏋️ Saúde & Fitness', central:'Rotina Saudável', paleta:'clean-newsroom',
+    ramos:[
+      { label:'Treino', filhos:['Musculação','Cardio','Mobilidade','Descanso'] },
+      { label:'Alimentação', filhos:['Proteínas','Carboidratos','Gorduras boas','Hidratação'] },
+      { label:'Sono', filhos:['7 a 9 horas','Higiene do sono','Rotina fixa','Ambiente escuro'] },
+      { label:'Mente', filhos:['Meditação','Terapia','Lazer','Desconexão digital'] },
+      { label:'Check-ups', filhos:['Exames anuais','Dentista','Oftalmologista'] },
+      { label:'Metas', filhos:['Peso','Medidas','Carga','Consistência'] }
+    ]},
+
+  { id:'gastronomia', nome:'🍽️ Gastronomia', central:'Planejamento de Cozinha', paleta:'pastel-soft',
+    ramos:[
+      { label:'Menu semanal', filhos:['Segunda a domingo','Almoço','Jantar','Lanches'] },
+      { label:'Ingredientes', filhos:['Proteínas','Vegetais','Grãos','Temperos'] },
+      { label:'Técnicas', filhos:['Refogar','Assar','Grelhar','Cozinhar a vapor'] },
+      { label:'Equipamentos', filhos:['Panelas','Forno','Air fryer','Processador'] },
+      { label:'Compras', filhos:['Feira semanal','Estoque','Despensa'] },
+      { label:'Segurança', filhos:['Higiene','Validade','Armazenamento'] }
+    ]},
+
+  { id:'viagem', nome:'✈️ Viagens', central:'Roteiro de Viagem', paleta:'deep-ocean',
+    ramos:[
+      { label:'Destino', filhos:['Cidade','Região','Clima','Melhor época'] },
+      { label:'Transporte', filhos:['Passagens','Locomoção local','Aluguel de carro','Transfer'] },
+      { label:'Hospedagem', filhos:['Hotel','Hostel','Airbnb','Localização'] },
+      { label:'Roteiro', filhos:['Pontos turísticos','Gastronomia','Cultura','Compras'] },
+      { label:'Orçamento', filhos:['Passagens','Hospedagem','Alimentação','Passeios'] },
+      { label:'Preparativos', filhos:['Documentos','Seguro viagem','Vacinas','Bagagem'] }
+    ]},
+
+  { id:'escrita', nome:'✍️ Escrita & Redação', central:'Estrutura de Texto', paleta:'clean-newsroom',
+    ramos:[
+      { label:'Planejamento', filhos:['Tema','Objetivo','Público','Pesquisa'] },
+      { label:'Estrutura', filhos:['Introdução','Desenvolvimento','Conclusão'] },
+      { label:'Argumentos', filhos:['Dados','Exemplos','Citações','Analogias'] },
+      { label:'Estilo', filhos:['Clareza','Coesão','Objetividade','Ritmo'] },
+      { label:'Revisão', filhos:['Gramática','Concordância','Repetições','Corte de excessos'] },
+      { label:'Recursos', filhos:['Conectivos','Figuras de linguagem','Vocabulário'] }
+    ]},
+
+  { id:'metas', nome:'🎯 Metas & OKRs', central:'Definição de Metas', paleta:'vibrant-pop',
+    ramos:[
+      { label:'Objetivo', filhos:['Qualitativo','Inspirador','Claro e memorável'] },
+      { label:'Resultados-chave', filhos:['Mensuráveis','Com prazo','Com responsável'] },
+      { label:'Iniciativas', filhos:['Ações','Projetos','Recursos necessários'] },
+      { label:'Prazos', filhos:['Trimestre','Mês','Semana'] },
+      { label:'Acompanhamento', filhos:['Check-ins','Revisões','Ajustes de rota'] },
+      { label:'Aprendizados', filhos:['Retrospectiva','Lições','Próximos passos'] }
+    ]},
+
+  { id:'design', nome:'🎨 Design', central:'Processo Criativo', paleta:'premium-tech',
+    ramos:[
+      { label:'Briefing', filhos:['Objetivo','Público','Referências','Restrições'] },
+      { label:'Pesquisa', filhos:['Benchmark','Moodboard','Tendências'] },
+      { label:'Ideação', filhos:['Brainstorm','Sketches','Fluxos de usuário'] },
+      { label:'Execução', filhos:['Wireframe','Protótipo','UI final','Microinterações'] },
+      { label:'Validação', filhos:['Testes com usuários','Feedback','Iteração'] },
+      { label:'Entrega', filhos:['Handoff','Assets','Documentação'] }
+    ]},
+
+  { id:'esportes', nome:'⚽ Esportes', central:'Preparação Esportiva', paleta:'vibrant-pop',
+    ramos:[
+      { label:'Físico', filhos:['Resistência','Força','Velocidade','Agilidade'] },
+      { label:'Técnico', filhos:['Fundamentos','Finalização','Drible','Passe'] },
+      { label:'Tático', filhos:['Posicionamento','Transições','Pressão','Bola parada'] },
+      { label:'Mental', filhos:['Foco','Confiança','Resiliência','Rotina pré-jogo'] },
+      { label:'Recuperação', filhos:['Alongamento','Massagem','Sono','Nutrição'] },
+      { label:'Competição', filhos:['Calendário','Adversários','Estratégia'] }
+    ]},
+
+  { id:'politica', nome:'🗳️ Política & Eleitoral', central:'Plano de Campanha', paleta:'editorial-brasil',
+    ramos:[
+      { label:'Diagnóstico', filhos:['Cenário','Adversários','Histórico eleitoral'] },
+      { label:'Público', filhos:['Segmentos','Prioridades','Territórios'] },
+      { label:'Mensagem', filhos:['Proposta','Slogan','Valores','Provas'] },
+      { label:'Canais', filhos:['Redes sociais','Rádio e TV','Porta a porta','Eventos'] },
+      { label:'Equipe', filhos:['Coordenação','Marketing','Mobilização','Jurídico'] },
+      { label:'Orçamento', filhos:['Arrecadação','Gastos','Prestação de contas'] }
+    ]},
+
+  { id:'projetos', nome:'📊 Gestão de Projetos', central:'Ciclo do Projeto', paleta:'deep-ocean',
+    ramos:[
+      { label:'Iniciação', filhos:['Escopo','Stakeholders','Justificativa'] },
+      { label:'Planejamento', filhos:['Cronograma','Orçamento','Riscos','Equipe'] },
+      { label:'Execução', filhos:['Tarefas','Comunicação','Qualidade'] },
+      { label:'Monitoramento', filhos:['Indicadores','Status','Desvios'] },
+      { label:'Encerramento', filhos:['Entrega','Documentação','Lições aprendidas'] },
+      { label:'Ferramentas', filhos:['Kanban','Gantt','OKRs','Reuniões'] }
+    ]},
+
+  { id:'custom', nome:'✨ Criar do zero', central:'Tema Central', paleta:'deep-ocean',
+    ramos:[
+      { label:'Ramo 1', filhos:['Sub-item 1','Sub-item 2'] },
+      { label:'Ramo 2', filhos:['Sub-item 1','Sub-item 2'] },
+      { label:'Ramo 3', filhos:['Sub-item 1','Sub-item 2'] }
+    ]}
+];
+
+/* ============================================================
+   2. UTILITÁRIOS
+   ============================================================ */
+function uid(){ return 'n' + Date.now().toString(36) + Math.random().toString(36).slice(2,7); }
+function escapar(s){
+  return String(s == null ? '' : s).replace(/[&<>"']/g, function(c){
+    return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];
+  });
+}
+function hexToRgb(h){
+  h = String(h).replace('#','');
+  if(h.length === 3) h = h.split('').map(function(c){ return c+c; }).join('');
+  return [parseInt(h.slice(0,2),16), parseInt(h.slice(2,4),16), parseInt(h.slice(4,6),16)];
+}
+function rgbToHex(r,g,b){
+  return '#' + [r,g,b].map(function(v){
+    return Math.max(0,Math.min(255,Math.round(v))).toString(16).padStart(2,'0');
+  }).join('');
+}
+function misturar(hex, alvo, t){
+  const a = hexToRgb(hex), b = hexToRgb(alvo);
+  return rgbToHex(a[0]+(b[0]-a[0])*t, a[1]+(b[1]-a[1])*t, a[2]+(b[2]-a[2])*t);
+}
+function clarear(hex, amt){ const c = hexToRgb(hex); return rgbToHex(c[0]+(255-c[0])*amt, c[1]+(255-c[1])*amt, c[2]+(255-c[2])*amt); }
+function rgba(hex, a){ const c = hexToRgb(hex); return 'rgba('+c[0]+','+c[1]+','+c[2]+','+a+')'; }
+function ciclo(arr, n){ const o = []; for(let i=0;i<n;i++) o.push(arr[i % arr.length]); return o; }
+
+const mctx = document.createElement('canvas').getContext('2d');
+function medirTexto(txt, size, weight){
+  mctx.font = weight + ' ' + size + 'px ' + FONT_CANVAS;
+  return mctx.measureText(String(txt)).width;
+}
+function quebrarTexto(txt, maxW, fs, weight){
+  const palavras = String(txt || '—').trim().split(/\s+/).filter(Boolean);
+  if(!palavras.length) return ['—'];
+  const linhas = [];
+  let atual = '';
+  palavras.forEach(function(p){
+    const teste = atual ? atual + ' ' + p : p;
+    if(!atual || medirTexto(teste, fs, weight) <= maxW){
+      atual = teste;
+    } else {
+      linhas.push(atual);
+      atual = p;
+    }
+  });
+  if(atual) linhas.push(atual);
+  if(linhas.length > 3){
+    const resto = linhas.slice(2).join(' ');
+    const tres = linhas.slice(0,3);
+    let t = tres[2];
+    while(t.length > 4 && medirTexto(t + '…', fs, weight) > maxW) t = t.slice(0,-2);
+    tres[2] = t + '…';
+    return tres;
+  }
+  return linhas;
+}
+
+/* ============================================================
+   3. ESTADO + PERSISTÊNCIA
+   ============================================================ */
+function seedConfig(){
+  try { return JSON.parse(document.getElementById('estado-inicial').textContent); }
+  catch(e){ return { temaId:'educacao', ui:{ tema:'auto', paleta:'auto', layout:'mirror' } }; }
+}
+
+function acharTema(id){
+  for(let i=0;i<TEMAS.length;i++) if(TEMAS[i].id === id) return TEMAS[i];
+  return TEMAS[0];
+}
+
+function construirArvore(tema){
+  const raiz = { id: uid(), label: tema.central, children: [], collapsed: false };
+  tema.ramos.forEach(function(r){
+    const no = { id: uid(), label: r.label, children: [], collapsed: false };
+    (r.filhos || []).forEach(function(f){
+      no.children.push({ id: uid(), label: f, children: [], collapsed: false });
+    });
+    raiz.children.push(no);
+  });
+  return raiz;
+}
+
+let config, ui, arvore, temaAtualId;
+let selecionadoId = null;
+let bounds = { w: 1200, h: 700 };
+let view = null;
+let usuarioAjustou = false;
+
+function carregar(){
+  const seed = seedConfig();
+  if(document.documentElement.dataset.standalone === '1'){
+    return { temaId: seed.temaId, ui: seed.ui, arvore: seed.arvore || null };
+  }
+  try {
+    const raw = localStorage.getItem(LS_KEY);
+    if(raw){
+      const p = JSON.parse(raw);
+      if(p && p.arvore && p.arvore.id) return p;
+    }
+  } catch(e){}
+  return { temaId: seed.temaId, ui: seed.ui, arvore: null };
+}
+
+function salvar(){
+  try {
+    localStorage.setItem(LS_KEY, JSON.stringify({ temaId: temaAtualId, ui: ui, arvore: arvore }));
+  } catch(e){ /* fallback silencioso */ }
+}
+
+/* ============================================================
+   4. TEMA VISUAL + PALETA
+   ============================================================ */
+function temaEfetivo(){
+  if(ui.tema === 'escuro') return 'escuro';
+  if(ui.tema === 'claro') return 'claro';
+  try { return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'escuro' : 'claro'; }
+  catch(e){ return 'claro'; }
+}
+
+function paletaAtual(){
+  const tema = acharTema(temaAtualId);
+  if(ui.paleta && ui.paleta !== 'auto' && PALETAS[ui.paleta]){
+    return { id: ui.paleta, nome: PALETAS[ui.paleta].nome, cores: PALETAS[ui.paleta].cores, auto: false };
+  }
+  const p = PALETAS[tema.paleta] || PALETAS['clean-newsroom'];
+  return { id: tema.paleta, nome: p.nome, cores: p.cores, auto: true };
+}
+
+function aplicarTemaVisual(){
+  const raiz = document.documentElement;
+  const dark = temaEfetivo() === 'escuro';
+  raiz.dataset.tema = dark ? 'escuro' : 'claro';
+  const p = paletaAtual();
+  raiz.style.setProperty('--accent', p.cores[0]);
+  raiz.style.setProperty('--accent-2', p.cores[1] || p.cores[0]);
+  raiz.style.setProperty('--grad',
+    'linear-gradient(135deg,' + p.cores[0] + ' 0%,' + (p.cores[1]||p.cores[0]) + ' 55%,' + (p.cores[2]||p.cores[0]) + ' 100%)');
+}
+
+/* ============================================================
+   5. ÁRVORE — HELPERS
+   ============================================================ */
+function percorrer(no, fn, pai, depth){
+  fn(no, pai || null, depth || 0);
+  (no.children || []).forEach(function(k){ percorrer(k, fn, no, (depth||0)+1); });
+}
+function percorrerVisivel(no, fn, pai, depth){
+  fn(no, pai || null, depth || 0);
+  if(no.collapsed) return;
+  (no.children || []).forEach(function(k){ percorrerVisivel(k, fn, no, (depth||0)+1); });
+}
+function acharNo(no, id){
+  if(no.id === id) return no;
+  const kids = no.children || [];
+  for(let i=0;i<kids.length;i++){
+    const r = acharNo(kids[i], id);
+    if(r) return r;
+  }
+  return null;
+}
+function acharPai(raiz, id){
+  let res = null;
+  (function walk(no){
+    (no.children || []).forEach(function(k){
+      if(k.id === id) res = no;
+      else if(!res) walk(k);
+    });
+  })(raiz);
+  return res;
+}
+function caminhoDe(raiz, id){
+  const cam = [];
+  (function walk(no, trilha){
+    const t = trilha.concat([no]);
+    if(no.id === id){ cam.push.apply(cam, t); return true; }
+    const kids = no.children || [];
+    for(let i=0;i<kids.length;i++){ if(walk(kids[i], t)) return true; }
+    return false;
+  })(raiz, []);
+  return cam;
+}
+function contar(raiz){
+  let total = 0, prof = 0;
+  percorrer(raiz, function(n, p, d){ total++; if(d > prof) prof = d; });
+  return { total: total, profundidade: prof };
+}
+
+/* ============================================================
+   6. LAYOUT
+   ============================================================ */
+function medirNo(no, depth){
+  const fs = depth === 0 ? 18 : depth === 1 ? 14 : 12.5;
+  const lh = fs * 1.34;
+  const weight = depth === 0 ? 800 : depth === 1 ? 700 : 600;
+  const maxTxt = depth === 0 ? 230 : depth === 1 ? 200 : 172;
+  const padH = depth === 0 ? 24 : depth === 1 ? 16 : 13;
+  const padV = depth === 0 ? 15 : depth === 1 ? 11 : 9;
+
+  const linhas = quebrarTexto(no.label, maxTxt, fs, weight);
+  let wTxt = 0;
+  linhas.forEach(function(l){ const w = medirTexto(l, fs, weight); if(w > wTxt) wTxt = w; });
+
+  no._linhas = linhas;
+  no._fs = fs;
+  no._lh = lh;
+  no._weight = weight;
+  no._w = Math.max(depth === 0 ? 132 : 78, Math.round(wTxt + padH * 2));
+  no._nh = Math.round(linhas.length * lh + padV * 2);
+  no._depth = depth;
+}
+
+function medirSub(no, depth, vertical){
+  medirNo(no, depth);
+  const kids = no.collapsed ? [] : (no.children || []);
+  const proprio = vertical ? (no._w + CFG.gapXv) : (no._nh + CFG.gapY);
+  if(!kids.length){
+    no._ext = proprio;
+    return no._ext;
+  }
+  let total = 0;
+  kids.forEach(function(k){ total += medirSub(k, depth + 1, vertical); });
+  no._ext = Math.max(proprio, total);
+  return no._ext;
+}
+
+function layoutHorizontal(no, xRef, yTop, dir){
+  const x = dir > 0 ? xRef : xRef - no._w;
+  no._x = x;
+  no._y = yTop + no._ext / 2 - no._nh / 2;
+  if(no.collapsed || !no.children || !no.children.length) return;
+  const soma = no.children.reduce(function(s,k){ return s + k._ext; }, 0);
+  let cy = yTop + Math.max(0, (no._ext - soma) / 2);
+  const cx = dir > 0 ? (xRef + no._w + CFG.gapX) : (xRef - no._w - CFG.gapX);
+  no.children.forEach(function(k){
+    layoutHorizontal(k, cx, cy, dir);
+    cy += k._ext;
+  });
+}
+
+function layoutVertical(no, yRef, xLeft){
+  no._y = yRef;
+  no._x = xLeft + no._ext / 2 - no._w / 2;
+  if(no.collapsed || !no.children || !no.children.length) return;
+  const soma = no.children.reduce(function(s,k){ return s + k._ext; }, 0);
+  let cx = xLeft + Math.max(0, (no._ext - soma) / 2);
+  const cy = yRef + no._nh + CFG.gapYv;
+  no.children.forEach(function(k){
+    layoutVertical(k, cy, cx);
+    cx += k._ext;
+  });
+}
+
+function espelhar(no, W){
+  no._x = W - no._x - no._w;
+  if(no.collapsed) return;
+  (no.children || []).forEach(function(k){ espelhar(k, W); });
+}
+
+function bbox(no){
+  let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+  percorrerVisivel(no, function(n){
+    if(n._x < minX) minX = n._x;
+    if(n._y < minY) minY = n._y;
+    if(n._x + n._w > maxX) maxX = n._x + n._w;
+    if(n._y + n._nh > maxY) maxY = n._y + n._nh;
+  });
+  if(minX === Infinity) return { minX:0, minY:0, maxX:200, maxY:100 };
+  return { minX:minX, minY:minY, maxX:maxX, maxY:maxY };
+}
+
+function calcularLayout(raiz){
+  const vertical = (ui.layout === 'down');
+
+  medirSub(raiz, 0, vertical);
+
+  percorrer(raiz, function(n){ n._x = 0; n._y = 0; n._lado = 'dir'; });
+
+  if(vertical){
+    raiz._ext = raiz._ext;
+    layoutVertical(raiz, 0, 0);
+    percorrerVisivel(raiz, function(n){ n._lado = 'baixo'; });
+  } else if(ui.layout === 'right'){
+    layoutHorizontal(raiz, 0, 0, +1);
+    percorrerVisivel(raiz, function(n){ n._lado = 'dir'; });
+  } else {
+    /* espelhado */
+    const kids = raiz.collapsed ? [] : (raiz.children || []);
+    const meio = Math.ceil(kids.length / 2);
+    const dirKids = kids.slice(0, meio);
+    const esqKids = kids.slice(meio);
+
+    let extDir = 0, extEsq = 0;
+    dirKids.forEach(function(k){ extDir += k._ext; });
+    esqKids.forEach(function(k){ extEsq += k._ext; });
+    const maxExt = Math.max(extDir, extEsq, raiz._nh);
+
+    /* lado esquerdo: layout em coordenadas "direita" e depois espelha */
+    let WL = 0;
+    if(esqKids.length){
+      let cy = (maxExt - extEsq) / 2;
+      esqKids.forEach(function(k){
+        layoutHorizontal(k, 0, cy, +1);
+        cy += k._ext;
+      });
+      const bb = bboxEsq(esqKids);
+      WL = bb.maxX;
+      esqKids.forEach(function(k){ espelhar(k, WL); });
+      esqKids.forEach(function(k){ marcarLado(k, 'esq'); });
+    }
+
+    raiz._x = WL ? WL + CFG.gapX : 0;
+    raiz._y = maxExt / 2 - raiz._nh / 2;
+    raiz._lado = 'dir';
+
+    if(dirKids.length){
+      let cy = (maxExt - extDir) / 2;
+      const cx = raiz._x + raiz._w + CFG.gapX;
+      dirKids.forEach(function(k){
+        layoutHorizontal(k, cx, cy, +1);
+        cy += k._ext;
+      });
+      dirKids.forEach(function(k){ marcarLado(k, 'dir'); });
+    }
+  }
+
+  /* normalizar para (padEsq, padTopo) */
+  const bb = bbox(raiz);
+  const dx = CFG.padEsq - bb.minX;
+  const dy = CFG.padTopo - bb.minY;
+  percorrerVisivel(raiz, function(n){ n._x += dx; n._y += dy; });
+
+  const bb2 = bbox(raiz);
+  bounds = {
+    w: Math.round(bb2.maxX + CFG.padDir),
+    h: Math.round(bb2.maxY + CFG.padBase)
+  };
+  if(bounds.w < 600) bounds.w = 600;
+  if(bounds.h < 380) bounds.h = 380;
+}
+
+function marcarLado(no, lado){
+  no._lado = lado;
+  if(no.collapsed) return;
+  (no.children || []).forEach(function(k){ marcarLado(k, lado); });
+}
+
+function bboxEsq(nodes){
+  let maxX = 0;
+  nodes.forEach(function(n){
+    percorrerVisivel(n, function(x){ if(x._x + x._w > maxX) maxX = x._x + x._w; });
+  });
+  return { maxX: maxX };
+}
+
+/* ============================================================
+   7. RENDER — SVG
+   ============================================================ */
+function corFundoNo(no, dark){
+  if(no._depth === 0) return 'url(#gradRaiz)';
+  if(no._depth === 1) return no._cor;
+  return dark ? misturar(no._cor, '#0b1118', 0.80) : misturar(no._cor, '#ffffff', 0.90);
+}
+function corTextoNo(no, dark){
+  if(no._depth <= 1) return '#ffffff';
+  return dark ? '#e2ecf7' : '#0f172a';
+}
+function corBordaNo(no, dark){
+  if(no._depth === 0) return 'transparent';
+  if(no._depth === 1) return no._cor;
+  return dark ? misturar(no._cor, '#0b1118', 0.55) : misturar(no._cor, '#ffffff', 0.50);
+}
+
+function pintar(no, cor){
+  no._cor = cor;
+  (no.children || []).forEach(function(k){ pintar(k, cor); });
+}
+
+function caminhoLink(pai, filho, vertical){
+  const px = pai._x, py = pai._y, pw = pai._w, ph = pai._nh;
+  const cx = filho._x, cy = filho._y, cw = filho._w, ch = filho._nh;
+
+  if(vertical){
+    const x1 = px + pw/2, y1 = py + ph;
+    const x2 = cx + cw/2, y2 = cy;
+    const my = (y1 + y2) / 2;
+    return 'M ' + x1.toFixed(1) + ' ' + y1.toFixed(1) +
+           ' C ' + x1.toFixed(1) + ' ' + my.toFixed(1) + ', ' +
+                   x2.toFixed(1) + ' ' + my.toFixed(1) + ', ' +
+                   x2.toFixed(1) + ' ' + y2.toFixed(1);
+  }
+
+  let x1, y1, x2, y2;
+  if(filho._lado === 'esq'){
+    x1 = px;          y1 = py + ph/2;
+    x2 = cx + cw;     y2 = cy + ch/2;
+  } else {
+    x1 = px + pw;     y1 = py + ph/2;
+    x2 = cx;          y2 = cy + ch/2;
+  }
+  const mx = (x1 + x2) / 2;
+  return 'M ' + x1.toFixed(1) + ' ' + y1.toFixed(1) +
+         ' C ' + mx.toFixed(1) + ' ' + y1.toFixed(1) + ', ' +
+                 mx.toFixed(1) + ' ' + y2.toFixed(1) + ', ' +
+                 x2.toFixed(1) + ' ' + y2.toFixed(1);
+}
+
+function svgNo(no, dark){
+  const x = no._x, y = no._y, w = no._w, h = no._nh;
+  const fill = corFundoNo(no, dark);
+  const cor = corTextoNo(no, dark);
+  const borda = corBordaNo(no, dark);
+  const rx = no._depth === 0 ? 15 : 10;
+  const strokeW = no._depth <= 1 ? 0 : 1.4;
+
+  const blocoH = no._linhas.length * no._lh;
+  const topoBloco = h/2 - blocoH/2;
+  let tspans = '';
+  no._linhas.forEach(function(l, i){
+    const base = topoBloco + no._lh * i + no._lh/2 + no._fs * 0.355;
+    tspans += '<tspan x="' + (w/2).toFixed(1) + '" y="' + base.toFixed(1) + '">' + escapar(l) + '</tspan>';
+  });
+
+  const temFilhos = !!(no.children && no.children.length);
+  const recolhido = !!no.collapsed && temFilhos;
+
+  let botoes = '';
+
+  /* badge de recolhido */
+  if(recolhido){
+    let bx, by;
+    if(no._lado === 'esq'){ bx = -14; by = h/2; }
+    else if(no._lado === 'baixo'){ bx = w/2; by = h + 15; }
+    else { bx = w + 14; by = h/2; }
+    botoes +=
+      '<g class="toggle" data-id="' + no.id + '" transform="translate(' + bx.toFixed(1) + ',' + by.toFixed(1) + ')">' +
+        '<circle r="10.5" fill="' + no._cor + '" opacity="0.95"/>' +
+        '<text x="0" y="3.7" text-anchor="middle" font-family="' + FONT_SVG + '" ' +
+              'font-size="10.5" font-weight="800" fill="#fff">' + (no.children.length) + '</text>' +
+      '</g>';
+  }
+
+  /* botão + */
+  const off = recolhido ? 36 : 14;
+  let px2, py2;
+  if(no._lado === 'esq'){ px2 = -off; py2 = h/2; }
+  else if(no._lado === 'baixo'){ px2 = w/2; py2 = h + off; }
+  else { px2 = w + off; py2 = h/2; }
+
+  botoes +=
+    '<g class="mais" data-id="' + no.id + '" transform="translate(' + px2.toFixed(1) + ',' + py2.toFixed(1) + ')">' +
+      '<circle r="11" fill="var(--acc-svg)" opacity="0.96"/>' +
+      '<text x="0" y="4" text-anchor="middle" font-family="' + FONT_SVG + '" ' +
+            'font-size="15" font-weight="800" fill="#fff">+</text>' +
+    '</g>';
+
+  const sel = (selecionadoId === no.id) ? ' sel' : '';
+
+  return '<g class="no' + sel + '" data-id="' + no.id + '" transform="translate(' + x.toFixed(1) + ',' + y.toFixed(1) + ')">' +
+    '<rect class="anel" x="-5" y="-5" width="' + (w+10) + '" height="' + (h+10) + '" rx="' + (rx+4) + '" ' +
+          'fill="none" stroke="' + no._cor + '" stroke-width="2" stroke-dasharray="5 4" opacity="0.85"/>' +
+    '<rect x="0" y="0" width="' + w + '" height="' + h + '" rx="' + rx + '" ' +
+          'fill="' + fill + '" stroke="' + borda + '" stroke-width="' + strokeW + '"/>' +
+    '<text text-anchor="middle" font-family="' + FONT_SVG + '" font-size="' + no._fs + '" ' +
+          'font-weight="' + no._weight + '" fill="' + cor + '" letter-spacing="-0.1">' + tspans + '</text>' +
+    botoes +
+  '</g>';
+}
+
+function gerarSVG(raiz, dark, cores, coresDark){
+  const bg = dark ? '#0b1118' : '#ffffff';
+  const txtMuted = dark ? '#7c8ea6' : '#64748b';
+  const txtForte = dark ? '#e6edf6' : '#0f172a';
+
+  let defs = '<defs>' +
+    '<linearGradient id="gradRaiz" x1="0" y1="0" x2="1" y2="1">' +
+      '<stop offset="0%" stop-color="' + cores[0] + '"/>' +
+      '<stop offset="100%" stop-color="' + (cores[1] || cores[0]) + '"/>' +
+    '</linearGradient>' +
+  '</defs>';
+
+  let style = '<style>' +
+    '.no{cursor:pointer}' +
+    '.no .mais{opacity:0;transition:opacity .15s ease}' +
+    '.no:hover .mais{opacity:1}' +
+    '.no.sel .mais{opacity:1}' +
+    '.no .anel{opacity:0;transition:opacity .15s ease}' +
+    '.no.sel .anel{opacity:0.85}' +
+    '.no:hover > rect:not(.anel){filter:brightness(1.06)}' +
+    '.toggle{cursor:pointer}' +
+    '.mais{cursor:pointer}' +
+    '.export .mais,.export .toggle,.export .anel{display:none !important}' +
+  '</style>';
+
+  const fundo = '<rect x="0" y="0" width="' + bounds.w + '" height="' + bounds.h + '" fill="' + bg + '"/>';
+
+  /* título */
+  const titulo = escapar(raiz.label);
+  let cabecalho =
+    '<text x="' + CFG.padEsq + '" y="48" font-family="' + FONT_SVG + '" font-size="24" ' +
+      'font-weight="800" fill="' + txtForte + '" letter-spacing="-0.6">' + titulo + '</text>' +
+    '<text x="' + CFG.padEsq + '" y="71" font-family="' + FONT_SVG + '" font-size="12.5" ' +
+      'font-weight="600" fill="' + txtMuted + '">' + escapar(state_subtitulo()) + '</text>';
+
+  /* links */
+  let links = '';
+  percorrerVisivel(raiz, function(no, pai){
+    if(!pai) return;
+    const largura = no._depth === 1 ? 3.6 : no._depth === 2 ? 2.4 : 1.7;
+    links += '<path d="' + caminhoLink(pai, no, ui.layout === 'down') + '" fill="none" ' +
+             'stroke="' + (dark ? clarear(no._cor, 0.10) : no._cor) + '" ' +
+             'stroke-width="' + largura + '" stroke-linecap="round" opacity="' + (dark ? 0.72 : 0.62) + '"/>';
+  });
+
+  /* nós */
+  let nos = '';
+  percorrerVisivel(raiz, function(no){ nos += svgNo(no, dark); });
+
+  /* rodapé */
+  const rodape =
+    '<text x="' + CFG.padEsq + '" y="' + (bounds.h - 22) + '" font-family="' + FONT_SVG + '" ' +
+      'font-size="11" font-weight="600" fill="' + txtMuted + '">' +
+      escapar(rodapeTexto()) +
+    '</text>';
+
+  return defs + style + fundo +
+    '<g id="conteudo">' + cabecalho + '<g id="links">' + links + '</g><g id="nos">' + nos + '</g></g>' +
+    rodape;
+}
+
+/* ============================================================
+   8. RENDER — GERAL
+   ============================================================ */
+function state_subtitulo(){
+  const t = acharTema(temaAtualId);
+  const c = contar(arvore);
+  return t.nome.replace(/^[^\s]+\s/, '') + ' · ' + c.total + ' nós · ' + c.profundidade + ' níveis';
+}
+function rodapeTexto(){
+  return 'Gerado em ' + dataHoraManaus(DATA_GERACAO) + ' (America/Manaus) · Mapa Mental';
+}
+function dataHoraManaus(d){
+  try {
+    return d.toLocaleString('pt-BR', { timeZone:'America/Manaus',
+      day:'2-digit', month:'2-digit', year:'numeric', hour:'2-digit', minute:'2-digit' });
+  } catch(e){
+    return d.toLocaleString('pt-BR', { day:'2-digit', month:'2-digit', year:'numeric', hour:'2-digit', minute:'2-digit' });
+  }
+}
+
+function render(){
+  aplicarTemaVisual();
+  const dark = temaEfetivo() === 'escuro';
+  const pal = paletaAtual();
+  const cores = dark ? pal.cores.map(function(c){ return clarear(c, 0.20); }) : pal.cores;
+
+  /* pintarramos */
+  arvore._cor = cores[0];
+  const filhos = arvore.children || [];
+  filhos.forEach(function(k, i){ pintar(k, cores[i % cores.length]); });
+
+  /* layout */
+  calcularLayout(arvore);
+
+  /* svg */
+  const svg = document.getElementById('mapa');
+  svg.style.setProperty('--acc-svg', cores[0]);
+  svg.innerHTML = gerarSVG(arvore, dark, cores, cores);
+
+  /* view */
+  if(!view || !usuarioAjustou){
+    view = { x: 0, y: 0, w: bounds.w, h: bounds.h };
+  } else {
+    view.w = Math.min(view.w, bounds.w * 1.4);
+    view.h = Math.min(view.h, bounds.h * 1.4);
+  }
+  aplicarView();
+
+  /* meta */
+  renderMeta();
+  renderInfos();
+  renderBarra();
+  salvar();
+}
+
+function aplicarView(){
+  const svg = document.getElementById('mapa');
+  svg.setAttribute('viewBox', view.x.toFixed(1) + ' ' + view.y.toFixed(1) + ' ' +
+                              view.w.toFixed(1) + ' ' + view.h.toFixed(1));
+}
+
+function renderMeta(){
+  const tema = acharTema(temaAtualId);
+  const pal = paletaAtual();
+  const c = contar(arvore);
+  const dt = dataHoraManaus(DATA_GERACAO);
+
+  document.getElementById('titulo').textContent = arvore.label;
+  document.getElementById('subtitulo').textContent =
+    tema.nome + ' · ' + c.total + ' nós distribuídos em ' + (c.profundidade + 1) + ' níveis';
+
+  document.getElementById('selo-tema').textContent = '🎯 ' + tema.nome;
+  document.getElementById('selo-paleta').textContent = '🎨 ' + pal.nome + (pal.auto ? ' (auto)' : '');
+  document.getElementById('selo-data').textContent = '📅 ' + dt;
+
+  document.getElementById('palco-titulo').textContent = '🧠 ' + arvore.label;
+  document.getElementById('palco-sub').textContent =
+    c.total + ' nós · ' + c.profundidade + ' níveis de profundidade · ' +
+    (ui.layout === 'mirror' ? 'layout espelhado' : ui.layout === 'right' ? 'árvore à direita' : 'árvore vertical');
+
+  document.getElementById('fonte').innerHTML = '📚 <strong>Tema:</strong> ' + escapar(tema.nome) +
+    ' &nbsp;·&nbsp; <strong>Nós:</strong> ' + c.total;
+  document.getElementById('rodape-data').textContent = '🕒 Gerado em ' + dt + ' — fuso America/Manaus';
+
+  const opAuto = document.querySelector('#sel-paleta option[value="auto"]');
+  if(opAuto) opAuto.textContent = '🎨 Automática (' + pal.nome + ')';
+}
+
+function renderInfos(){
+  const box = document.getElementById('infos');
+  const c = contar(arvore);
+  const raizes = (arvore.children || []).length;
+  const folhas = (function(){
+    let n = 0;
+    percorrer(arvore, function(x){ if(!x.children || !x.children.length) n++; });
+    return n;
+  })();
+  const pal = paletaAtual().cores;
+
+  const itens = [
+    { rot:'🧩 Total de nós', val: c.total, det: 'na árvore completa', c1: pal[0], c2: pal[1]||pal[0] },
+    { rot:'🌿 Ramos principais', val: raizes, det: 'ligados ao centro', c1: pal[1]||pal[0], c2: pal[2]||pal[0] },
+    { rot:'🍃 Folhas', val: folhas, det: 'nós sem filhos', c1: pal[2]||pal[0], c2: pal[3]||pal[0] },
+    { rot:'📐 Profundidade', val: c.profundidade, det: 'níveis abaixo do centro', c1: pal[3]||pal[0], c2: pal[4]||pal[0] }
+  ];
+
+  box.innerHTML = itens.map(function(i){
+    return '<div class="info" style="background:linear-gradient(135deg,' + rgba(i.c1,.15) + ',' + rgba(i.c2,.05) + '),var(--surface)">' +
+      '<div class="rot">' + i.rot + '</div>' +
+      '<div class="val">' + i.val + '</div>' +
+      '<div class="det">' + escapar(i.det) + '</div>' +
+    '</div>';
+  }).join('');
+}
+
+function renderBarra(){
+  const barra = document.getElementById('barraNo');
+  if(!selecionadoId){
+    barra.hidden = true;
+    return;
+  }
+  const no = acharNo(arvore, selecionadoId);
+  if(!no){ selecionadoId = null; barra.hidden = true; return; }
+
+  const cam = caminhoDe(arvore, selecionadoId);
+  const trilha = cam.map(function(n){ return n.label; }).join(' › ');
+
+  document.getElementById('barraLabel').textContent = no.label;
+  document.getElementById('barraCaminho').textContent = trilha;
+  document.getElementById('btn-recolher').textContent = no.collapsed ? '📂 Expandir' : '📁 Recolher';
+  barra.hidden = false;
+}
+
+/* ============================================================
+   9. INTERAÇÃO — SELEÇÃO, PAN, ZOOM
+   ============================================================ */
+function selecionar(id){
+  selecionadoId = id;
+  const svg = document.getElementById('mapa');
+  svg.querySelectorAll('.no.sel').forEach(function(el){ el.classList.remove('sel'); });
+  if(id){
+    const el = svg.querySelector('.no[data-id="' + id + '"]');
+    if(el) el.classList.add('sel');
+  }
+  renderBarra();
+}
+
+let arrastando = false, arrastou = false, ptIni = null, viewIni = null;
+
+function ligarMapa(){
+  const svg = document.getElementById('mapa');
+
+  svg.addEventListener('click', function(e){
+    if(arrastou){ arrastou = false; return; }
+
+    const mais = e.target.closest('.mais');
+    if(mais){ e.stopPropagation(); adicionarFilho(mais.dataset.id); return; }
+
+    const tog = e.target.closest('.toggle');
+    if(tog){ e.stopPropagation(); alternarRecolhido(tog.dataset.id); return; }
+
+    const no = e.target.closest('.no');
+    if(no){ selecionar(no.dataset.id); return; }
+
+    selecionar(null);
+  });
+
+  svg.addEventListener('pointerdown', function(e){
+    if(e.target.closest('.mais') || e.target.closest('.toggle')) return;
+    if(e.button !== undefined && e.button !== 0) return;
+    arrastando = true;
+    arrastou = false;
+    ptIni = { x: e.clientX, y: e.clientY };
+    viewIni = { x: view.x, y: view.y };
+    svg.classList.add('arrastando');
+    try { svg.setPointerCapture(e.pointerId); } catch(err){}
+  });
+
+  svg.addEventListener('pointermove', function(e){
+    if(!arrastando) return;
+    const dx = e.clientX - ptIni.x;
+    const dy = e.clientY - ptIni.y;
+    if(Math.abs(dx) > 4 || Math.abs(dy) > 4) arrastou = true;
+
+    const rect = svg.getBoundingClientRect();
+    const s = Math.max(view.w / rect.width, view.h / rect.height);
+    view.x = viewIni.x - dx * s;
+    view.y = viewIni.y - dy * s;
+    usuarioAjustou = true;
+    aplicarView();
+  });
+
+  function soltar(e){
+    if(!arrastando) return;
+    arrastando = false;
+    svg.classList.remove('arrastando');
+    try { svg.releasePointerCapture(e.pointerId); } catch(err){}
+  }
+  svg.addEventListener('pointerup', soltar);
+  svg.addEventListener('pointercancel', soltar);
+
+  svg.addEventListener('wheel', function(e){
+    e.preventDefault();
+    const fator = e.deltaY > 0 ? 1.12 : 0.89;
+    zoom(fator);
+  }, { passive: false });
+}
+
+function zoom(fator){
+  const cx = view.x + view.w / 2;
+  const cy = view.y + view.h / 2;
+  let nw = view.w * fator;
+  let nh = view.h * fator;
+  const minW = bounds.w * 0.08, maxW = bounds.w * 1.6;
+  if(nw < minW){ nw = minW; nh = minW * (view.h / view.w); }
+  if(nw > maxW){ nw = maxW; nh = maxW * (view.h / view.w); }
+  view.w = nw;
+  view.h = nh;
+  view.x = cx - nw / 2;
+  view.y = cy - nh / 2;
+  usuarioAjustou = true;
+  aplicarView();
+}
+
+function centralizar(){
+  view = { x: 0, y: 0, w: bounds.w, h: bounds.h };
+  usuarioAjustou = false;
+  aplicarView();
+}
+
+/* ============================================================
+   10. CRUD
+   ============================================================ */
+let editandoId = null, paiParaNovo = null;
+
+function abrirModal(modo, id){
+  const modal = document.getElementById('modal');
+  const campoTxt = document.getElementById('campoTexto');
+
+  if(modo === 'editar'){
+    editandoId = id; paiParaNovo = null;
+    const no = acharNo(arvore, id);
+    document.getElementById('modalTitulo').textContent = '✏️ Renomear nó';
+    document.getElementById('modalAjuda').textContent =
+      'Altere o texto deste nó. Os filhos permanecem intactos.';
+    campoTxt.value = no ? no.label : '';
+  } else {
+    editandoId = null; paiParaNovo = id;
+    const pai = acharNo(arvore, id);
+    document.getElementById('modalTitulo').textContent = '➕ Adicionar nó';
+    document.getElementById('modalAjuda').textContent =
+      'Novo nó dentro de "' + (pai ? pai.label : '') + '".';
+    campoTxt.value = '';
+  }
+
+  modal.hidden = false;
+  setTimeout(function(){ try { campoTxt.focus(); campoTxt.select(); } catch(e){} }, 40);
+}
+function fecharModal(){
+  document.getElementById('modal').hidden = true;
+  editandoId = null; paiParaNovo = null;
+}
+function salvarModal(){
+  const txt = document.getElementById('campoTexto').value.trim();
+  if(!txt){ document.getElementById('campoTexto').focus(); return; }
+
+  if(editandoId){
+    const no = acharNo(arvore, editandoId);
+    if(no) no.label = txt;
+    selecionadoId = editandoId;
+  } else if(paiParaNovo){
+    const pai = acharNo(arvore, paiParaNovo);
+    if(pai){
+      if(!pai.children) pai.children = [];
+      const novo = { id: uid(), label: txt, children: [], collapsed: false };
+      pai.children.push(novo);
+      pai.collapsed = false;
+      selecionadoId = novo.id;
+    }
+  }
+  fecharModal();
+  usuarioAjustou = false;
+  render();
+}
+
+function adicionarFilho(id){
+  abrirModal('novo', id);
+}
+
+function alternarRecolhido(id){
+  const no = acharNo(arvore, id);
+  if(!no || !no.children || !no.children.length) return;
+  no.collapsed = !no.collapsed;
+  usuarioAjustou = false;
+  render();
+}
+
+function excluirNo(id){
+  if(id === arvore.id) return;
+  const pai = acharPai(arvore, id);
+  if(!pai) return;
+  pai.children = (pai.children || []).filter(function(k){ return k.id !== id; });
+  if(selecionadoId === id) selecionadoId = pai.id;
+  usuarioAjustou = false;
+  render();
+}
+
+/* ============================================================
+   11. EVENTOS DA UI
+   ============================================================ */
+function popularTemas(){
+  const sel = document.getElementById('sel-tema-mapa');
+  sel.innerHTML = TEMAS.map(function(t){
+    return '<option value="' + t.id + '">' + t.nome + '</option>';
+  }).join('');
+  sel.value = temaAtualId;
+}
+
+function trocarTema(id){
+  const tema = acharTema(id);
+  temaAtualId = id;
+  arvore = construirArvore(tema);
+  selecionadoId = null;
+  usuarioAjustou = false;
+  if(ui.paleta === 'auto'){ /* paleta segue o tema */ }
+  render();
+}
+
+function ligarUI(){
+  document.getElementById('sel-tema-mapa').addEventListener('change', function(){
+    trocarTema(this.value);
+  });
+  document.getElementById('sel-layout').addEventListener('change', function(){
+    ui.layout = this.value; usuarioAjustou = false; render();
+  });
+  document.getElementById('sel-paleta').addEventListener('change', function(){
+    ui.paleta = this.value; usuarioAjustou = false; render();
+  });
+  document.getElementById('sel-tema').addEventListener('change', function(){
+    ui.tema = this.value; render();
+  });
+
+  document.getElementById('btn-mais').addEventListener('click', function(){ zoom(0.85); });
+  document.getElementById('btn-menos').addEventListener('click', function(){ zoom(1.18); });
+  document.getElementById('btn-fit').addEventListener('click', centralizar);
+
+  document.getElementById('btn-expandir').addEventListener('click', function(){
+    percorrer(arvore, function(n){ n.collapsed = false; });
+    usuarioAjustou = false; render();
+  });
+  document.getElementById('btn-recolher').addEventListener('click', function(){
+    percorrer(arvore, function(n, p, d){ if(d >= 1) n.collapsed = true; });
+    usuarioAjustou = false; render();
+  });
+
+  /* barra do nó */
+  document.querySelector('.barra-acoes').addEventListener('click', function(e){
+    const btn = e.target.closest('button[data-acao]');
+    if(!btn || !selecionadoId) return;
+    const acao = btn.dataset.acao;
+    if(acao === 'filho') adicionarFilho(selecionadoId);
+    else if(acao === 'editar') abrirModal('editar', selecionadoId);
+    else if(acao === 'recolher') alternarRecolhido(selecionadoId);
+    else if(acao === 'excluir'){
+      if(btn.dataset.confirma === '1'){ excluirNo(selecionadoId); }
+      else {
+        btn.dataset.confirma = '1';
+        btn.textContent = '❗ Confirmar';
+        btn.style.borderColor = '#e63946';
+        setTimeout(function(){
+          if(document.body.contains(btn)){
+            btn.dataset.confirma = '0';
+            btn.textContent = '🗑️ Excluir';
+            btn.style.borderColor = '';
+          }
+        }, 2800);
+      }
+    }
+  });
+
+  /* modal */
+  document.getElementById('btn-cancelar').addEventListener('click', fecharModal);
+  document.getElementById('btn-salvar').addEventListener('click', salvarModal);
+  document.getElementById('modal').addEventListener('click', function(e){
+    if(e.target === this) fecharModal();
+  });
+  document.getElementById('campoTexto').addEventListener('keydown', function(e){
+    if(e.key === 'Enter' && !e.shiftKey){ e.preventDefault(); salvarModal(); }
+  });
+  document.addEventListener('keydown', function(e){
+    if(e.key === 'Escape' && !document.getElementById('modal').hidden) fecharModal();
+  });
+
+  /* rodapé */
+  document.getElementById('btn-restaurar').addEventListener('click', function(){
+    trocarTema(temaAtualId);
+  });
+  document.getElementById('btn-png').addEventListener('click', baixarPNG);
+  document.getElementById('btn-html').addEventListener('click', baixarHTML);
+
+  /* atalhos */
+  document.addEventListener('keydown', function(e){
+    if(!selecionadoId) return;
+    const tag = (e.target.tagName || '').toLowerCase();
+    if(tag === 'input' || tag === 'textarea') return;
+    if(e.key === 'Tab'){ e.preventDefault(); adicionarFilho(selecionadoId); }
+    else if(e.key === 'Enter'){ e.preventDefault(); abrirModal('editar', selecionadoId); }
+    else if(e.key === 'Delete' || e.key === 'Backspace'){
+      e.preventDefault();
+      excluirNo(selecionadoId);
+    }
+  });
+
+  try {
+    window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', function(){
+      if(ui.tema === 'auto') render();
+    });
+  } catch(err){}
+}
+
+/* ============================================================
+   12. EXPORTAÇÃO
+   ============================================================ */
+function slug(s){
+  return String(s || 'mapa-mental').normalize('NFD').replace(/[\u0300-\u036f]/g,'')
+    .replace(/[^a-zA-Z0-9]+/g,'-').replace(/^-+|-+$/g,'').toLowerCase().slice(0,60) || 'mapa-mental';
+}
+
+function svgExportavel(){
+  const svg = document.getElementById('mapa').cloneNode(true);
+  svg.setAttribute('class', 'export');
+  svg.setAttribute('viewBox', '0 0 ' + bounds.w + ' ' + bounds.h);
+  svg.setAttribute('width', bounds.w);
+  svg.setAttribute('height', bounds.h);
+  svg.setAttribute('preserveAspectRatio', 'xMidYMid meet');
+  svg.setAttribute('xmlns', NS);
+  svg.querySelectorAll('.sel').forEach(function(el){ el.classList.remove('sel'); });
+  /* fixar a cor de destaque dentro do svg exportado */
+  const st = svg.querySelector('style');
+  if(st){
+    st.textContent = st.textContent.replace(/var\(--acc-svg\)/g, paletaAtual().cores[0]);
+  }
+  svg.querySelectorAll('.mais circle').forEach(function(c){
+    c.setAttribute('fill', paletaAtual().cores[0]);
+  });
+  return svg;
+}
+
+function baixarPNG(){
+  const btn = document.getElementById('btn-png');
+  const orig = btn.textContent;
+  btn.textContent = '⏳ Gerando...';
+  btn.disabled = true;
+
+  try {
+    const svg = svgExportavel();
+    const xml = new XMLSerializer().serializeToString(svg);
+    const blob = new Blob([xml], { type: 'image/svg+xml;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+
+    const img = new Image();
+    img.onload = function(){
+      const escala = 2;
+      const canvas = document.createElement('canvas');
+      canvas.width = Math.round(bounds.w * escala);
+      canvas.height = Math.round(bounds.h * escala);
+      const ctx = canvas.getContext('2d');
+      ctx.fillStyle = temaEfetivo() === 'escuro' ? '#0b1118' : '#ffffff';
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+      URL.revokeObjectURL(url);
+
+      try {
+        const a = document.createElement('a');
+        a.download = slug(arvore.label) + '.png';
+        a.href = canvas.toDataURL('image/png');
+        document.body.appendChild(a); a.click(); a.remove();
+      } catch(err){
+        alert('Não foi possível salvar o PNG (canvas bloqueado).');
+      }
+      btn.textContent = orig; btn.disabled = false;
+    };
+    img.onerror = function(){
+      URL.revokeObjectURL(url);
+      alert('Não foi possível gerar a imagem neste ambiente.');
+      btn.textContent = orig; btn.disabled = false;
+    };
+    img.src = url;
+  } catch(e){
+    btn.textContent = orig; btn.disabled = false;
+    alert('Erro ao exportar PNG.');
+  }
+}
+
+function baixarHTML(){
+  const clone = document.documentElement.cloneNode(true);
+  clone.setAttribute('data-standalone', '1');
+  clone.setAttribute('data-arquivo', 'exp-' + Date.now());
+
+  const m = clone.querySelector('#modal'); if(m) m.setAttribute('hidden', '');
+  const b = clone.querySelector('#barraNo'); if(b) b.setAttribute('hidden', '');
+  const svg = clone.querySelector('#mapa'); if(svg) svg.innerHTML = '';
+  const inf = clone.querySelector('#infos'); if(inf) inf.innerHTML = '';
+
+  const seed = clone.querySelector('#estado-inicial');
+  if(seed){
+    seed.textContent = JSON.stringify({
+      temaId: temaAtualId,
+      ui: ui,
+      arvore: arvore
+    }).replace(/</g, '\\u003c');
+  }
+
+  const html = '<!DOCTYPE html>\n' + clone.outerHTML;
+  const blob = new Blob([html], { type: 'text/html;charset=utf-8' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.download = slug(arvore.label) + '.html';
+  a.href = url;
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(function(){ URL.revokeObjectURL(url); }, 4000);
+}
+
+/* ============================================================
+   13. BOOT
+   ============================================================ */
+function boot(){
+  const salvo = carregar();
+  temaAtualId = salvo.temaId || 'educacao';
+  ui = Object.assign({ tema:'auto', paleta:'auto', layout:'mirror' }, salvo.ui || {});
+
+  if(salvo.arvore && salvo.arvore.id){
+    arvore = salvo.arvore;
+    /* garante campos */
+    percorrer(arvore, function(n){
+      if(!n.children) n.children = [];
+      if(n.collapsed === undefined) n.collapsed = false;
+      if(!n.id) n.id = uid();
+    });
+  } else {
+    arvore = construirArvore(acharTema(temaAtualId));
+  }
+
+  popularTemas();
+  document.getElementById('sel-layout').value = ui.layout;
+  document.getElementById('sel-paleta').value = ui.paleta;
+  document.getElementById('sel-tema').value = ui.tema;
+
+  ligarUI();
+  ligarMapa();
+  render();
+}
+
+if(document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot);
+else boot();
+
+})();
+</script>
+</body>
+</html>
